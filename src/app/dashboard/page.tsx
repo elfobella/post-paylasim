@@ -83,29 +83,48 @@ export default function Dashboard() {
     try {
       setLoading(true);
       
-      // localStorage'dan postları al
-      let userPosts = [];
-      try {
-        const storedPosts = localStorage.getItem('posts');
-        if (storedPosts) {
-          userPosts = JSON.parse(storedPosts);
-        }
-      } catch (err) {
-        console.error('Postları okuma hatası:', err);
+      // localStorage'dan kullanıcı postlarını al
+      const storedPosts = localStorage.getItem('posts');
+      let userPosts: Post[] = [];
+      
+      if (storedPosts) {
+        userPosts = JSON.parse(storedPosts);
       }
       
-      // Eğer localStorage'da post yoksa demo postları kullan
-      if (!userPosts || userPosts.length === 0) {
-        setPosts(demoPostlar);
-      } else {
-        // Kullanıcının oluşturduğu postları ve demo postları birleştir
+      // Kullanıcı postları varsa, demo postlarla birleştir
+      // Yoksa sadece demo postları göster
+      if (userPosts && userPosts.length > 0) {
         setPosts([...userPosts, ...demoPostlar]);
+      } else {
+        setPosts(demoPostlar);
       }
       
       setLoading(false);
+      return;
+      
+      // API'den postları getir (şu an kullanılmıyor)
+      const response = await fetch('/api/posts');
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'Postlar getirilirken bir hata oluştu';
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          console.error('API yanıtı JSON formatında değil:', errorText);
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      setPosts(data);
     } catch (err: any) {
       console.error('Postları getirme hatası:', err);
       setError(err.message || 'Postlar getirilirken bir hata oluştu');
+    } finally {
       setLoading(false);
     }
   };
