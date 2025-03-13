@@ -56,39 +56,62 @@ export default function CreatePost() {
       setSuccess('Post başarıyla oluşturuldu! Dashboard sayfasına yönlendiriliyorsunuz...');
       
       // Yeni postu localStorage'a kaydet
+      const existingPostsJSON = localStorage.getItem('posts');
+      const existingPosts = existingPostsJSON ? JSON.parse(existingPostsJSON) : [];
+      
       const newPost = {
         id: `post-${Date.now()}`,
         title,
         description,
         imageUrl,
-        userId: user?.id || 'demo-user-id',
-        username: user?.username || 'Demo Kullanıcı',
+        userId: user?.id || 'unknown',
+        username: user?.username || 'Anonim Kullanıcı',
         createdAt: new Date().toISOString()
       };
       
-      // Mevcut postları al
-      let posts = [];
-      try {
-        const storedPosts = localStorage.getItem('posts');
-        if (storedPosts) {
-          posts = JSON.parse(storedPosts);
-        }
-      } catch (err) {
-        console.error('Postları okuma hatası:', err);
-        posts = [];
-      }
-      
-      // Yeni postu ekle
-      posts.unshift(newPost);
-      
-      // Postları kaydet
-      localStorage.setItem('posts', JSON.stringify(posts));
+      // Yeni postu listeye ekle ve localStorage'a kaydet
+      const updatedPosts = [newPost, ...existingPosts];
+      localStorage.setItem('posts', JSON.stringify(updatedPosts));
       
       setTimeout(() => {
         router.push('/dashboard');
       }, 2000);
       
       return;
+      
+      // Gerçek API çağrısı (şu an kullanılmıyor)
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title,
+          description,
+          image: imageUrl,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'Post oluşturulurken bir hata oluştu';
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          console.error('API yanıtı JSON formatında değil:', errorText);
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      setSuccess('Post başarıyla oluşturuldu! Dashboard sayfasına yönlendiriliyorsunuz...');
+      
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 2000);
     } catch (err: any) {
       console.error('Post oluşturma hatası:', err);
       setError(err.message || 'Post oluşturulurken bir hata oluştu');
